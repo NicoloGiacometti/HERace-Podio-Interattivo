@@ -384,8 +384,19 @@ function ghGuessDir() {
   return inner.length ? inner.join("/") + "/" : "";
 }
 
+/* Errori di rete: fetch() lancia un TypeError generico ("Failed to fetch"). */
+async function ghFetch(url, init) {
+  try {
+    return await fetch(url, init);
+  } catch (e) {
+    throw new Error("api.github.com non raggiungibile: connessione assente, oppure proxy/firewall aziendale o antivirus che blocca le chiamate a GitHub.");
+  }
+}
+
 async function ghApi(cfg, method, suffix, body) {
-  const res = await fetch("https://api.github.com/repos/" + cfg.repo + "/" + suffix, {
+  // La slash finale (".../repos/utente/repo/") fa rispondere 404 all'API.
+  const url = "https://api.github.com/repos/" + cfg.repo + (suffix ? "/" + suffix : "");
+  const res = await ghFetch(url, {
     method: method,
     headers: {
       "Accept": "application/vnd.github+json",
@@ -412,7 +423,7 @@ async function ghApi(cfg, method, suffix, body) {
 
 /* Identifica a chi appartiene il token: serve a spiegare bene i 404. */
 async function ghUser(token) {
-  const res = await fetch("https://api.github.com/user", {
+  const res = await ghFetch("https://api.github.com/user", {
     headers: {
       "Accept": "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
