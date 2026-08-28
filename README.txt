@@ -1,19 +1,23 @@
 HE Race - I Risultati / app web
 ================================
 
-Contenuto della cartella:
-  index.html   applicazione completa, tutto incluso (font, logo, titolo, librerie)
+Contenuto della cartella (caricare tutto insieme, stessa cartella):
+  index.html          la pagina (codice indentato e leggibile)
+  support.js          runtime dei componenti
+  logo.png            logo in alto a destra
+  titolo-herace.png   lockup del titolo
 
 Come pubblicare
 ---------------
-Copiare index.html in una qualsiasi cartella del server web e aprirlo via
-http:// o https:// (es. https://tuodominio.it/herace/index.html).
-Non serve PHP, database o build: e' un file statico.
+Copiare i 4 file in una cartella del server web e aprire index.html
+via http:// o https:// (es. https://tuodominio.it/herace/).
+Non serve PHP, database o build: sono file statici.
+
+Font (Barlow Condensed, Anton) e la libreria di export PNG (html2canvas)
+vengono caricati da CDN: serve connessione internet.
 
 Note
 ----
-- Dati e foto inseriti vengono salvati nel browser di chi usa la pagina
+- Dati e foto inseriti restano salvati nel browser di chi usa la pagina
   (localStorage): ogni postazione ha la propria copia.
-- L'esportazione PNG funziona interamente nel browser.
-- Per aggiornare la grafica, modificare il progetto sorgente e rigenerare
-  questo file.
+- L'esportazione PNG avviene interamente nel browser.
