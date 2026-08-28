@@ -320,6 +320,335 @@ const SEED = [
   ["16","23","JACK2505","6","1:08.959","3","1:07.112","13 Giri","-10"]
 ].map(a => KEYS.reduce((o, k, i) => (o[k] = a[i], o), {}));
 
+/* ================= Sync GitHub (Personal Access Token) ================= */
+
+const GH_LS = "herace_gh_v1";
+const GH_FILE = "herace-data.json";
+const GH_DEFAULTS = { token: "", repo: "", branch: "" };
+
+const b64enc = str => {
+  const b = new TextEncoder().encode(str);
+  let s = "";
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s);
+};
+
+const b64dec = b64 => {
+  const s = atob(String(b64 || "").replace(/\s+/g, ""));
+  const a = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i);
+  return new TextDecoder("utf-8").decode(a);
+};
+
+function ghCfgLoad() {
+  try { return Object.assign({}, GH_DEFAULTS, JSON.parse(localStorage.getItem(GH_LS) || "{}")); }
+  catch (e) { return Object.assign({}, GH_DEFAULTS); }
+}
+
+function ghCfgSave(cfg) {
+  try { localStorage.setItem(GH_LS, JSON.stringify(cfg)); } catch (e) {}
+}
+
+/* Repo e cartella dedotti dall'URL di GitHub Pages: utente.github.io/nome-repo/... */
+function ghGuessRepo() {
+  const host = location.hostname;
+  if (!/\.github\.io$/i.test(host)) return "";
+  const owner = host.replace(/\.github\.io$/i, "");
+  const seg = location.pathname.split("/").filter(Boolean);
+  return owner + "/" + (seg.length ? seg[0] : host.toLowerCase());
+}
+
+/* Cartella del sito dentro il repo (es. "docs/" se pubblichi da /docs). */
+function ghGuessDir() {
+  const seg = location.pathname.split("/").filter(Boolean);
+  const inner = seg.slice(1).filter(s => s.indexOf(".") === -1);
+  return inner.length ? inner.join("/") + "/" : "";
+}
+
+async function ghApi(cfg, method, suffix, body) {
+  const res = await fetch("https://api.github.com/repos/" + cfg.repo + "/" + suffix, {
+    method: method,
+    headers: {
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Authorization": "Bearer " + cfg.token,
+      "Content-Type": "application/json"
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (res.status === 404) return null;
+  let json = null;
+  try { json = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    const m = (json && json.message) || ("HTTP " + res.status);
+    throw new Error(
+      res.status === 401 ? "Token non valido o scaduto." :
+      res.status === 403 ? "Il token non ha i permessi necessari: " + m :
+      res.status === 409 ? "Il file e' stato modificato altrove: ricarica la pagina." :
+      m
+    );
+  }
+  return json;
+}
+
+const ghGetFile = (cfg, path) =>
+  ghApi(cfg, "GET", "contents/" + encodeURI(path) + "?ref=" + encodeURIComponent(cfg.branch));
+
+async function ghPutFile(cfg, path, contentB64, message) {
+  let sha = null;
+  try { const cur = await ghGetFile(cfg, path); sha = cur && cur.sha; } catch (e) {}
+  const body = { message: message, content: contentB64, branch: cfg.branch };
+  if (sha) body.sha = sha;
+  return ghApi(cfg, "PUT", "contents/" + encodeURI(path), body);
+}
+
+const MIME_EXT = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+
+/* Legge il file dati gia' pubblicato: nessun token, funziona per tutti i visitatori. */
+async function ghFetchPublic() {
+  try {
+    const res = await fetch("./" + GH_FILE + "?t=" + new Date().getTime(), { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) { return null; }
+}
+
+/*
+  Pannello fluttuante in basso a sinistra: solo il token.
+  Repo e branch si ricavano da soli; con il token salvato ogni modifica
+  viene pubblicata automaticamente sul repo. DOM nativo, quindi fuori
+  dall'area catturata nell'export PNG.
+*/
+class GhPanel {
+  constructor(hooks) {
+    this.hooks = hooks;
+    this.cfg = ghCfgLoad();
+    this.open = false;
+    this.busy = false;
+    this.pending = false;
+    this.error = false;
+    this.timer = null;
+    this.lastPushed = null;
+    this.build();
+  }
+
+  el(tag, css, text) {
+    const n = document.createElement(tag);
+    if (css) n.style.cssText = css;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  btn(label, kind, onClick) {
+    const styles = {
+      primary: "color:#07070d;background:#ff2e7e;border:0",
+      quiet: "color:#8b97a3;background:transparent;border:1px solid rgba(255,255,255,.14)"
+    };
+    const b = this.el("button", "font:700 13px/1 Barlow,sans-serif;border-radius:6px;padding:9px 15px;cursor:pointer;" + styles[kind], label);
+    b.type = "button";
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  build() {
+    this.root = this.el("div", "position:fixed;left:16px;bottom:16px;z-index:9999;font-family:Barlow,sans-serif");
+
+    this.panel = this.el("div", "display:none;width:320px;max-width:calc(100vw - 32px);margin-bottom:10px;background:#0d1118;border:1px solid rgba(63,208,239,.35);border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.6);padding:16px");
+
+    this.panel.appendChild(this.el("div", "font:400 17px/1.1 Anton,sans-serif;letter-spacing:.5px;color:#fff", "SALVA SU GITHUB"));
+    this.panel.appendChild(this.el("div", "margin-top:5px;font:400 12px/1.5 Barlow,sans-serif;color:#93a0ac", "Inserisci un Personal Access Token con permesso Contents: Read and write. Con il token salvato, modifiche e foto vengono pubblicate sul repo automaticamente."));
+
+    this.input = this.el("input", "margin-top:12px;width:100%;background:#070a0f;border:1px solid rgba(255,255,255,.16);border-radius:6px;color:#dfe6ee;font:400 13px/1.3 Barlow,sans-serif;padding:9px 10px;outline:none");
+    this.input.type = "password";
+    this.input.placeholder = "github_pat_... oppure ghp_...";
+    this.input.autocomplete = "off";
+    this.input.spellcheck = false;
+    this.input.value = this.cfg.token || "";
+    this.input.addEventListener("focus", () => { this.input.style.borderColor = "#3fd0ef"; });
+    this.input.addEventListener("blur", () => { this.input.style.borderColor = "rgba(255,255,255,.16)"; });
+    this.input.addEventListener("keydown", e => { if (e.key === "Enter") this.doSaveToken(); });
+    this.panel.appendChild(this.input);
+
+    const row = this.el("div", "margin-top:12px;display:flex;gap:8px;flex-wrap:wrap");
+    row.appendChild(this.btn("Salva token", "primary", () => this.doSaveToken()));
+    row.appendChild(this.btn("Dimentica token", "quiet", () => this.doForget()));
+    this.panel.appendChild(row);
+
+    this.status = this.el("div", "margin-top:12px;font:400 12px/1.5 Barlow,sans-serif;color:#8b97a3;word-break:break-word", "");
+    this.panel.appendChild(this.status);
+
+    this.fab = this.el("button", "display:flex;align-items:center;gap:8px;font:700 12px/1 Barlow,sans-serif;letter-spacing:.4px;color:#fff;background:#12161f;border:1px solid rgba(63,208,239,.5);border-radius:999px;padding:10px 14px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5)");
+    this.fab.type = "button";
+    this.dot = this.el("span", "width:8px;height:8px;border-radius:50%;flex:none;background:#8b97a3");
+    this.fab.appendChild(this.dot);
+    this.fab.appendChild(this.el("span", "", "GitHub"));
+    this.fab.addEventListener("click", () => this.toggle());
+    this.fab.addEventListener("mouseenter", () => { this.fab.style.background = "#1a2130"; });
+    this.fab.addEventListener("mouseleave", () => { this.fab.style.background = "#12161f"; });
+
+    this.root.appendChild(this.panel);
+    this.root.appendChild(this.fab);
+    document.body.appendChild(this.root);
+
+    this.onDocDown = e => { if (this.open && !this.root.contains(e.target)) this.toggle(false); };
+    document.addEventListener("mousedown", this.onDocDown);
+
+    this.say(this.cfg.token ? "Token salvato: le modifiche vengono pubblicate da sole." : "Nessun token: le modifiche restano solo su questo browser.");
+    this.refreshDot();
+  }
+
+  destroy() {
+    if (this.timer) clearTimeout(this.timer);
+    document.removeEventListener("mousedown", this.onDocDown);
+    if (this.root && this.root.parentNode) this.root.parentNode.removeChild(this.root);
+  }
+
+  toggle(force) {
+    this.open = force == null ? !this.open : !!force;
+    this.panel.style.display = this.open ? "block" : "none";
+    if (this.open && !this.cfg.token) this.input.focus();
+  }
+
+  refreshDot() {
+    this.dot.style.background =
+      this.busy ? "#f2c230" :
+      this.error ? "#ff3b6b" :
+      this.pending ? "#f2c230" :
+      this.cfg.token ? "#2fd66e" : "#8b97a3";
+    this.fab.title = this.status.textContent || "Salvataggio su GitHub";
+  }
+
+  say(text, color) {
+    this.status.textContent = text;
+    this.status.style.color = color || "#8b97a3";
+    if (this.fab) this.fab.title = text;
+  }
+
+  /* --- token --- */
+
+  doSaveToken() {
+    const token = (this.input.value || "").trim();
+    if (!token) { this.error = true; this.say("Incolla prima il token.", "#ff5c99"); this.refreshDot(); return; }
+    const repo = ghGuessRepo();
+    if (!repo) {
+      this.error = true;
+      this.refreshDot();
+      this.say("Apri la pagina dall'indirizzo GitHub Pages (utente.github.io/repo): da file locale il repo non e' identificabile.", "#ff5c99");
+      return;
+    }
+    this.busy = true;
+    this.error = false;
+    this.refreshDot();
+    this.say("Verifico il token...", "#3fd0ef");
+    const cfg = { token: token, repo: repo, branch: "" };
+    ghApi(cfg, "GET", "").then(info => {
+      if (!info) throw new Error("Repository " + repo + " non raggiungibile con questo token.");
+      if (!(info.permissions && info.permissions.push))
+        throw new Error("Il token legge il repo ma non puo' scrivere: serve Contents: Read and write.");
+      cfg.branch = info.default_branch || "main";
+      this.cfg = cfg;
+      ghCfgSave(cfg);
+      this.busy = false;
+      this.refreshDot();
+      this.say("Token salvato per " + info.full_name + " (" + cfg.branch + "). Le modifiche vengono pubblicate da sole.", "#2fd66e");
+      this.queue(400);
+    }).catch(e => {
+      this.busy = false;
+      this.error = true;
+      this.refreshDot();
+      this.say((e && e.message) || "Verifica non riuscita.", "#ff5c99");
+    });
+  }
+
+  doForget() {
+    if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+    this.cfg = Object.assign({}, GH_DEFAULTS);
+    this.input.value = "";
+    this.pending = false;
+    this.error = false;
+    ghCfgSave(this.cfg);
+    this.say("Token rimosso da questo browser.", "#ffca4a");
+    this.refreshDot();
+  }
+
+  /* --- pubblicazione automatica --- */
+
+  ready() { return !!(this.cfg.token && this.cfg.repo && this.cfg.branch); }
+
+  canon(data) {
+    return JSON.stringify({ podium: data.podium, rows: data.rows, meta: data.meta, photos: data.photos });
+  }
+
+  markSynced(data) { this.lastPushed = this.canon(data); }
+
+  /* Chiamata a ogni modifica: accorpa le scritture in un solo commit. */
+  queue(delay) {
+    if (!this.ready()) return;
+    if (this.canon(this.hooks.collect()) === this.lastPushed) return;
+    this.pending = true;
+    this.refreshDot();
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = setTimeout(() => { this.timer = null; this.push(); }, delay == null ? 2500 : delay);
+  }
+
+  async push() {
+    if (this.busy) { this.queue(1500); return; }
+    if (!this.ready()) return;
+    const data = this.hooks.collect();
+    if (this.canon(data) === this.lastPushed) { this.pending = false; this.refreshDot(); return; }
+
+    this.busy = true;
+    this.error = false;
+    this.refreshDot();
+    this.say("Pubblico su GitHub...", "#3fd0ef");
+    try {
+      const cfg = this.cfg;
+      const dir = ghGuessDir();
+      const stamp = String(new Date().getTime());
+      const photos = (data.photos || []).slice();
+
+      for (let i = 0; i < photos.length; i++) {
+        const m = /^data:([^;,]+);base64,(.*)$/.exec(String(photos[i] || ""));
+        if (!m) continue;
+        const name = "herace-foto-" + (i + 1) + "." + (MIME_EXT[m[1].toLowerCase()] || "png");
+        this.say("Carico la foto del podio " + (i + 1) + "...", "#3fd0ef");
+        await ghPutFile(cfg, dir + name, m[2], "HE Race: foto podio " + (i + 1));
+        photos[i] = "./" + name + "?v=" + stamp;
+      }
+
+      const payload = Object.assign({}, data, { photos: photos, savedAt: new Date().toISOString() });
+      await ghPutFile(cfg, dir + GH_FILE, b64enc(JSON.stringify(payload, null, 2)), "HE Race: aggiorna risultati");
+
+      this.markSynced(payload);
+      this.pending = false;
+      this.busy = false;
+      this.refreshDot();
+      this.say("Pubblicato alle " + new Date().toLocaleTimeString("it-IT") + ". GitHub Pages si aggiorna in circa un minuto.", "#2fd66e");
+      this.hooks.apply(payload);
+    } catch (e) {
+      this.busy = false;
+      this.error = true;
+      this.pending = true;
+      this.refreshDot();
+      this.say((e && e.message) || "Pubblicazione non riuscita.", "#ff5c99");
+    }
+  }
+
+  /* All'avvio: la versione pubblicata vince se e' piu' recente di quella locale. */
+  bootstrap(localSavedAt) {
+    return ghFetchPublic().then(remote => {
+      if (!remote || !remote.rows || !remote.rows.length) return;
+      if (localSavedAt && remote.savedAt && remote.savedAt <= localSavedAt) {
+        this.markSynced(remote);
+        return;
+      }
+      this.markSynced(remote);
+      this.hooks.apply(remote);
+      this.say("Caricata la versione pubblicata sul repo." + (this.cfg.token ? " Le modifiche vengono pubblicate da sole." : ""), "#3fd0ef");
+    }).catch(() => {});
+  }
+}
+
 class Component extends DCLogic {
   state = {
     podium: [
@@ -331,7 +660,8 @@ class Component extends DCLogic {
     meta: { fastestTime: "1:01.149", fastestName: "BADO86", fastestKart: "KART 25", raceTitle: "Gara 56 - 20:37 - 27/08/2026" },
     photos: [null, null, null],
     modal: null,
-    msg: ""
+    msg: "",
+    savedAt: ""
   };
 
   wrapRef = React.createRef();
@@ -341,9 +671,31 @@ class Component extends DCLogic {
   save = () => {
     try {
       localStorage.setItem(LS, JSON.stringify({
-        podium: this.state.podium, rows: this.state.rows, meta: this.state.meta, photos: this.state.photos
+        podium: this.state.podium, rows: this.state.rows, meta: this.state.meta,
+        photos: this.state.photos, savedAt: this.state.savedAt || ""
       }));
     } catch (e) {}
+    if (this.gh) this.gh.queue();
+  };
+
+  /* --- ponte verso il pannello GitHub --- */
+
+  ghCollect = () => ({
+    podium: this.state.podium,
+    rows: this.state.rows,
+    meta: this.state.meta,
+    photos: this.state.photos
+  });
+
+  ghApply = data => {
+    if (!data) return;
+    this.setState({
+      podium: data.podium || this.state.podium,
+      rows: data.rows || this.state.rows,
+      meta: Object.assign({}, this.state.meta, data.meta || {}),
+      photos: data.photos || this.state.photos,
+      savedAt: data.savedAt || this.state.savedAt
+    }, this.save);
   };
 
   fit = () => {
@@ -364,16 +716,24 @@ class Component extends DCLogic {
         podium: saved.podium || this.state.podium,
         rows: saved.rows,
         meta: Object.assign({}, this.state.meta, saved.meta || {}),
-        photos: saved.photos || [null, null, null]
+        photos: saved.photos || [null, null, null],
+        savedAt: saved.savedAt || ""
       });
     }
+
+    this.gh = new GhPanel({ collect: this.ghCollect, apply: this.ghApply });
+    this.gh.bootstrap((saved && saved.savedAt) || "");
+
     this.fit();
     [120, 400, 1200].forEach(t => setTimeout(this.fit, t));
     window.addEventListener("resize", this.fit);
   }
 
   componentDidUpdate() { this.fit(); }
-  componentWillUnmount() { window.removeEventListener("resize", this.fit); }
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.fit);
+    if (this.gh) this.gh.destroy();
+  }
 
   onInput = e => {
     const t = e.target, p = t && t.dataset && t.dataset.path;
