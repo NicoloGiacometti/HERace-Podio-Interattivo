@@ -152,7 +152,7 @@
     {
       "pos": "13",
       "kart": "30",
-      "pilota": "NICOLÒ GIACOMETTI",
+      "pilota": "NICOLÒ GIACOMETT",
       "qpos": "7",
       "qtime": "1:09.475",
       "laps": "12",
@@ -205,5 +205,5 @@
     null,
     null
   ],
-  "savedAt": "2026-08-28T11:59:23.064Z"
+  "savedAt": "2026-08-28T12:03:37.960Z"
 }
