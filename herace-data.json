@@ -1,0 +1,209 @@
+{
+  "podium": [
+    {
+      "name": "BADO86",
+      "laps": "16 GIRI",
+      "best": "1:01.149"
+    },
+    {
+      "name": "LUCA SAVIOTTI",
+      "laps": "16 GIRI",
+      "best": "1:01.490"
+    },
+    {
+      "name": "C.DARPINS",
+      "laps": "15 GIRI",
+      "best": "1:02.496"
+    }
+  ],
+  "rows": [
+    {
+      "pos": "1",
+      "kart": "25",
+      "pilota": "BADO86",
+      "qpos": "3",
+      "qtime": "1:04.126",
+      "laps": "16",
+      "best": "1:01.149",
+      "gap": "–",
+      "delta": "+2"
+    },
+    {
+      "pos": "2",
+      "kart": "13",
+      "pilota": "LUCA SAVIOTTI",
+      "qpos": "2",
+      "qtime": "1:03.819",
+      "laps": "16",
+      "best": "1:01.490",
+      "gap": "0.954",
+      "delta": "0"
+    },
+    {
+      "pos": "3",
+      "kart": "28",
+      "pilota": "C.DARPINS",
+      "qpos": "1",
+      "qtime": "1:03.355",
+      "laps": "15",
+      "best": "1:02.496",
+      "gap": "1 Giro",
+      "delta": "-2"
+    },
+    {
+      "pos": "4",
+      "kart": "29",
+      "pilota": "PAZZ VERSTAPPEN",
+      "qpos": "4",
+      "qtime": "1:07.567",
+      "laps": "15",
+      "best": "1:03.695",
+      "gap": "1 Giro",
+      "delta": "0"
+    },
+    {
+      "pos": "5",
+      "kart": "8",
+      "pilota": "LAMA#9",
+      "qpos": "5",
+      "qtime": "1:08.315",
+      "laps": "15",
+      "best": "1:04.700",
+      "gap": "1 Giro",
+      "delta": "0"
+    },
+    {
+      "pos": "6",
+      "kart": "15",
+      "pilota": "MMENNINI",
+      "qpos": "8",
+      "qtime": "1:11.277",
+      "laps": "14",
+      "best": "1:04.751",
+      "gap": "2 Giri",
+      "delta": "+2"
+    },
+    {
+      "pos": "7",
+      "kart": "2",
+      "pilota": "MONTEAS98",
+      "qpos": "13",
+      "qtime": "1:15.615",
+      "laps": "14",
+      "best": "1:07.178",
+      "gap": "2 Giri",
+      "delta": "+6"
+    },
+    {
+      "pos": "8",
+      "kart": "22",
+      "pilota": "MARCODISI",
+      "qpos": "15",
+      "qtime": "1:16.882",
+      "laps": "14",
+      "best": "1:06.468",
+      "gap": "2 Giri",
+      "delta": "+7"
+    },
+    {
+      "pos": "9",
+      "kart": "7",
+      "pilota": "CHARLES LESGREG",
+      "qpos": "11",
+      "qtime": "1:14.172",
+      "laps": "14",
+      "best": "1:06.388",
+      "gap": "2 Giri",
+      "delta": "+2"
+    },
+    {
+      "pos": "10",
+      "kart": "6",
+      "pilota": "ALEBROWNS",
+      "qpos": "10",
+      "qtime": "1:13.764",
+      "laps": "14",
+      "best": "1:07.925",
+      "gap": "2 Giri",
+      "delta": "0"
+    },
+    {
+      "pos": "11",
+      "kart": "18",
+      "pilota": "ELPABLOS",
+      "qpos": "12",
+      "qtime": "1:15.287",
+      "laps": "14",
+      "best": "1:06.592",
+      "gap": "2 Giri",
+      "delta": "+1"
+    },
+    {
+      "pos": "12",
+      "kart": "5",
+      "pilota": "GIANLU.DR",
+      "qpos": "9",
+      "qtime": "1:12.986",
+      "laps": "14",
+      "best": "1:07.664",
+      "gap": "2 Giri",
+      "delta": "-3"
+    },
+    {
+      "pos": "13",
+      "kart": "30",
+      "pilota": "NICOLÒ GIACOMETTI",
+      "qpos": "7",
+      "qtime": "1:09.475",
+      "laps": "12",
+      "best": "1:15.246",
+      "gap": "4 Giri",
+      "delta": "-6"
+    },
+    {
+      "pos": "14",
+      "kart": "4",
+      "pilota": "KIA92",
+      "qpos": "16",
+      "qtime": "2:23.949",
+      "laps": "8",
+      "best": "1:54.517",
+      "gap": "8 Giri",
+      "delta": "+2"
+    },
+    {
+      "pos": "15",
+      "kart": "1",
+      "pilota": "AR444",
+      "qpos": "14",
+      "qtime": "1:15.634",
+      "laps": "8",
+      "best": "1:06.595",
+      "gap": "8 Giri",
+      "delta": "-1"
+    },
+    {
+      "pos": "16",
+      "kart": "23",
+      "pilota": "JACK2505",
+      "qpos": "6",
+      "qtime": "1:08.959",
+      "laps": "3",
+      "best": "1:07.112",
+      "gap": "13 Giri",
+      "delta": "-10"
+    }
+  ],
+  "meta": {
+    "fastestTime": "1:01.149",
+    "fastestName": "BADO86",
+    "fastestKart": "KART 25",
+    "raceTitle": "Gara 56 - 20:37 - 27/08/2026"
+  },
+  "photos": [
+    null,
+    null,
+    null
+  ],
+  "savedAt": "2026-08-28T11:58:56.645Z"
+}
