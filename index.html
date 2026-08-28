@@ -497,7 +497,7 @@ class GhPanel {
   }
 
   build() {
-    this.root = this.el("div", "position:fixed;left:calc(16px + env(safe-area-inset-left));bottom:calc(16px + env(safe-area-inset-bottom));z-index:9999;font-family:Barlow,sans-serif");
+    this.root = this.el("div", "position:fixed;right:calc(16px + env(safe-area-inset-left));bottom:calc(16px + env(safe-area-inset-bottom));z-index:9999;font-family:Barlow,sans-serif");
 
     this.panel = this.el("div", "display:none;width:320px;max-width:calc(100vw - 32px);margin-bottom:10px;background:#0d1118;border:1px solid rgba(63,208,239,.35);border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.6);padding:16px");
 
