@@ -6,6 +6,11 @@ Contenuto della cartella (caricare tutto insieme, stessa cartella):
   support.js          runtime dei componenti
   logo.png            logo in alto a destra
   titolo-herace.png   lockup del titolo
+  manifest.json       dati per l'installazione come app
+  sw.js               service worker (cache offline)
+  icon-192.png        icona app Android
+  icon-512.png        icona app Android (schermo grande / maskable)
+  apple-touch-icon.png  icona app iOS
   herace-data.json    (creato dal pannello GitHub: dati pubblicati)
 
 Come pubblicare
@@ -61,3 +66,21 @@ Il pannello non compare nel PNG esportato.
 
 Attenzione: il token resta in localStorage del browser che lo inserisce.
 Non usarlo su postazioni condivise e revocalo se non serve piu'.
+
+
+Installazione sul telefono
+--------------------------
+Aperta da https:// la pagina si installa come app a schermo intero,
+senza barra degli indirizzi:
+
+  Android (Chrome)  menu ... > Installa app / Aggiungi a schermata Home
+  iPhone (Safari)   tasto Condividi > Aggiungi a Home
+
+Nome sull'icona: "HE Race". L'icona e' il marchio Hera su fondo scuro.
+Su iOS l'installazione funziona solo da Safari, non da Chrome.
+
+Il service worker tiene una copia dei file: se il telefono e' offline
+la pagina si apre comunque e mostra gli ultimi dati salvati sul
+dispositivo. Quando c'e' rete vince sempre la versione online, quindi
+non serve svuotare cache dopo un aggiornamento del sito.
+Font e libreria PNG arrivano da CDN: offline l'export PNG non funziona.

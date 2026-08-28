@@ -3,6 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HE Race - I Risultati</title>
+
+<!-- Installabile come app da Android e iOS -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#05050a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="HE Race">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<script>
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js").catch(function () {});
+    });
+  }
+</script>
+
 <script src="./support.js"></script>
 </head>
 <body>
@@ -451,7 +470,7 @@ class GhPanel {
   }
 
   build() {
-    this.root = this.el("div", "position:fixed;left:16px;bottom:16px;z-index:9999;font-family:Barlow,sans-serif");
+    this.root = this.el("div", "position:fixed;left:calc(16px + env(safe-area-inset-left));bottom:calc(16px + env(safe-area-inset-bottom));z-index:9999;font-family:Barlow,sans-serif");
 
     this.panel = this.el("div", "display:none;width:320px;max-width:calc(100vw - 32px);margin-bottom:10px;background:#0d1118;border:1px solid rgba(63,208,239,.35);border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.6);padding:16px");
 
