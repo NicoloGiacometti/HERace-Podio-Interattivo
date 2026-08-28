@@ -410,6 +410,22 @@ async function ghApi(cfg, method, suffix, body) {
   return json;
 }
 
+/* Identifica a chi appartiene il token: serve a spiegare bene i 404. */
+async function ghUser(token) {
+  const res = await fetch("https://api.github.com/user", {
+    headers: {
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Authorization": "Bearer " + token
+    }
+  });
+  if (res.status === 401) throw new Error("Token non valido, scaduto o revocato.");
+  let json = null;
+  try { json = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error((json && json.message) || ("HTTP " + res.status));
+  return json;
+}
+
 const ghGetFile = (cfg, path) =>
   ghApi(cfg, "GET", "contents/" + encodeURI(path) + "?ref=" + encodeURIComponent(cfg.branch));
 
@@ -476,6 +492,13 @@ class GhPanel {
 
     this.panel.appendChild(this.el("div", "font:400 17px/1.1 Anton,sans-serif;letter-spacing:.5px;color:#fff", "SALVA SU GITHUB"));
     this.panel.appendChild(this.el("div", "margin-top:5px;font:400 12px/1.5 Barlow,sans-serif;color:#93a0ac", "Inserisci un Personal Access Token con permesso Contents: Read and write. Con il token salvato, modifiche e foto vengono pubblicate sul repo automaticamente."));
+
+    this.repoLine = this.el("div", "margin-top:8px;font:600 11px/1.5 Barlow,sans-serif;letter-spacing:.3px;color:#6f7b87");
+    const guessed = ghGuessRepo();
+    this.repoLine.textContent = guessed
+      ? "Destinazione: " + guessed + (ghGuessDir() ? " (cartella " + ghGuessDir() + ")" : "")
+      : "Destinazione non rilevata: apri la pagina dall'indirizzo GitHub Pages.";
+    this.panel.appendChild(this.repoLine);
 
     this.input = this.el("input", "margin-top:12px;width:100%;background:#070a0f;border:1px solid rgba(255,255,255,.16);border-radius:6px;color:#dfe6ee;font:400 13px/1.3 Barlow,sans-serif;padding:9px 10px;outline:none");
     this.input.type = "password";
@@ -560,10 +583,19 @@ class GhPanel {
     this.refreshDot();
     this.say("Verifico il token...", "#3fd0ef");
     const cfg = { token: token, repo: repo, branch: "" };
-    ghApi(cfg, "GET", "").then(info => {
-      if (!info) throw new Error("Repository " + repo + " non raggiungibile con questo token.");
+    let login = "";
+    ghUser(token).then(user => {
+      login = (user && user.login) || "";
+      return ghApi(cfg, "GET", "");
+    }).then(info => {
+      if (!info) {
+        const owner = repo.split("/")[0];
+        if (login && login.toLowerCase() !== owner.toLowerCase())
+          throw new Error("Il token appartiene a " + login + ", ma il sito sta nel repo di " + owner + ". Serve un token creato da " + owner + ".");
+        throw new Error("Il token e' valido (" + login + ") ma non vede " + repo + ". Nel token, in Repository access, scegli Only select repositories e aggiungi " + repo.split("/")[1] + " (oppure All repositories); se e' un token di un'organizzazione potrebbe essere in attesa di approvazione.");
+      }
       if (!(info.permissions && info.permissions.push))
-        throw new Error("Il token legge il repo ma non puo' scrivere: serve Contents: Read and write.");
+        throw new Error("Il token vede il repo ma non puo' scrivere: in Permissions metti Contents: Read and write (non solo Read).");
       cfg.branch = info.default_branch || "main";
       this.cfg = cfg;
       ghCfgSave(cfg);
